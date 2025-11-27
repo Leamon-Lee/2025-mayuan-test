@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全题库智能答题卡 (1-600题) - 可修改版</title>
+    <style>
+        :root {
+            --primary: #1890ff;
+            --success: #52c41a;
+            --error: #ff4d4f;
+            --text: #333;
+            --bg: #f0f2f5;
+            --card: #fff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        /* 顶部控制栏 */
+        .header-bar {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            position: sticky;
+            top: 10px;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        h1 { margin: 0; font-size: 1.2rem; color: var(--primary); }
+
+        .mode-switch {
+            display: flex;
+            background: #f0f0f0;
+            border-radius: 6px;
+            padding: 4px;
+        }
+
+        .mode-btn {
+            padding: 6px 16px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: bold;
+            color: #666;
+            transition: 0.3s;
+        }
+
+        .mode-btn.active {
+            background: var(--card);
+            color: var(--primary);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .action-btns button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 8px;
+            transition: 0.2s;
+        }
+
+        .btn-save { background: #faad14; color: white; }
+        .btn-clear { background: #ff4d4f; color: white; }
+        .btn-check { background: var(--primary); color: white; }
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        /* 题目网格 */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 15px;
+        }
+
+        .q-card {
+            background: var(--card);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            border-left: 4px solid transparent;
+            transition: all 0.3s;
+        }
+
+        /* 题目类型标记 */
+        .q-card[data-type="single"] { border-left-color: #69c0ff; } /* 单选蓝 */
+        .q-card[data-type="multi"] { border-left-color: #b37feb; } /* 多选紫 */
+        .q-card[data-type="judge"] { border-left-color: #ffc069; } /* 判断橙 */
+
+        .q-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            color: #888;
+        }
+
+        .q-type-badge {
+            background: #eee;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8em;
+        }
+
+        /* 选项按钮组 */
+        .options {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .opt-btn {
+            width: 36px;
+            height: 36px;
+            border: 1px solid #d9d9d9;
+            background: #fff;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            font-weight: bold;
+            color: #555;
+            transition: all 0.2s;
+        }
+
+        /* 选中状态 */
+        .opt-btn.selected {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* 阅览模式：直接显示答案 */
+        body.view-mode .opt-btn.is-answer {
+            background: var(--success);
+            color: white;
+            border-color: var(--success);
+            box-shadow: 0 0 8px rgba(82, 196, 26, 0.4);
+        }
+        
+        /* 判分模式：正确 */
+        .q-card.correct .opt-btn.selected {
+            background: var(--success);
+            border-color: var(--success);
+        }
+        .q-card.correct::after {
+            content: "✔";
+            position: absolute;
+            right: 15px;
+            color: var(--success);
+            font-size: 1.5em;
+        }
+
+        /* 判分模式：错误 */
+        .q-card.wrong .opt-btn.selected {
+            background: var(--error);
+            border-color: var(--error);
+        }
+        .q-card.wrong .opt-btn.is-answer {
+            border: 2px solid var(--success);
+            color: var(--success);
+            background: #f6ffed;
+        }
+
+        /* 底部统计 */
+        .status-bar {
+            margin-top: 20px;
+            text-align: center;
+            color: #666;
+            padding: 20px;
+        }
+
+        #scoreDisplay {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: var(--primary);
+            display: none;
+        }
+        
+        /* 判断题特殊样式 */
+        .judge-true::before { content: "√"; }
+        .judge-false::before { content: "×"; }
+
+    </style>
+</head>
+<body class="view-mode"> <div class="container">
+    <div class="header-bar">
+        <div>
+            <h1>📚 思政课题库 (1-600)</h1>
+            <small style="color:#888">单选/多选/判断自动识别</small>
+        </div>
+        
+        <div class="mode-switch">
+            <button class="mode-btn active" onclick="switchMode('view')">背题模式</button>
+            <button class="mode-btn" onclick="switchMode('practice')">刷题模式</button>
+        </div>
+
+        <div class="action-btns">
+            <button class="btn-clear" onclick="clearAll()">清空</button>
+            <button class="btn-save" onclick="saveData()">保存</button>
+            <button class="btn-check" id="submitBtn" style="display:none" onclick="checkAnswers()">交卷评分</button>
+        </div>
+    </div>
+
+    <div id="scoreDisplay"></div>
+    <div class="grid-container" id="sheet">
+        </div>
+    
+    <div class="status-bar">
+        <p>数据来源：用户上传题库解析 | 此页面为纯本地运行，不消耗流量</p>
+    </div>
+</div>
+
+<script>
+    // ----------------------
+    // 1. 核心数据 (保留原样)
+    // ----------------------
+    const DB = {
+        // 单选 1-222
+        range1: "ADBAA BADAB CDDAA DCBCA DBDBA DDBBC BCCAA ABCBC CBBBC BDDBD BCCAB ADBDA CDCAC AAABC BBBCC DAAAC CCDBA BBDAB ABCBB AAABC BDAAB BBBCB ABABA ACBDC  DCBCA BBDCA AAACD CAABD CCCBA DCBDA BDACC ADCBA CADDA CABAA ACCBB BCBCC CCBAC ADCDB DBACD ACABC BADBA CBCBD DBAAC ADABC DA",
+        
+        // 多选 223-271 (特殊处理)
+        multi: {
+            223:"ABC" , 224:"BCD" , 225:"AC"  , 226:"ABC" , 227:"AB"  , 228:"ABC" , 229:"ABCD", 230:"ABC" ,
+            231:"ACD" , 232:"ABC" , 233:"ABCD", 234:"ABC" , 235:"ACD" , 236:"ABCD", 237:"ABC" , 238:"AB"  ,
+            239:"ACD" , 240:"ABC" , 241:"ABC" , 242:"ABCD", 243:"ABD" , 244:"ABCD", 245:"ABD" , 246:"BD"  ,
+            247:"ABD" , 248:"ABCD", 249:"ABC" , 250:"ABC" , 251:"BC"  , 252:"ABC" , 253:"ABCD", 254:"ABD" ,
+            255:"ABCD", 256:"CD"  , 257:"ABC" , 258:"ABCD", 259:"ABC" , 260:"AB"  , 261:"AD"  , 262:"ABD" ,
+            263:"ABD" , 264:"ABCD", 265:"CD"  , 266:"ABCD", 267:"ABC" , 268:"ACD" , 269:"ABC" , 270:"BD"  ,
+            271:"ABCD"
+        },
+
+        // 判断 272-319 (1=对, 0=错)
+        judge: "11100 01100 00000 11111 10010 11111 10000 11011 00001 1", // 需转换
+
+        // 混合题型 320-600 (根据解析提取)
+        mixed: {
+            320:"A",321:"A",322:"BD",323:"C",324:"D",325:"D",326:"T",327:"C",328:"A",329:"ABCD",
+            330:"ABCD",331:"F",332:"T",333:"BC",334:"F",335:"T",336:"C",337:"BC",338:"T",339:"C",
+            340:"C",341:"A",342:"B",343:"A",344:"CD",345:"T",346:"F",347:"A",348:"AB",349:"A",
+            350:"B",351:"B",352:"C",353:"F",354:"C",355:"F",356:"ABCD",357:"T",358:"A",359:"ABC",
+            360:"A",361:"T",362:"A",363:"ABCD",364:"ABD",365:"C",366:"ABCD",367:"B",368:"D",369:"B",
+            370:"C",371:"C",372:"D",373:"B",374:"A",375:"C",376:"C",377:"B",378:"A",379:"B",380:"C",
+            381:"C",382:"A",383:"A",384:"A",385:"D",386:"D",387:"C",388:"C",389:"D",390:"A",
+            391:"F",392:"ABCD",393:"C",394:"C",395:"ABCD",396:"A",397:"T",398:"B",399:"A",400:"A",
+            401:"C",402:"D",403:"ABCD",404:"T",405:"AD",406:"CD",407:"A",408:"AC",409:"AC",410:"F",
+            411:"D",412:"D",413:"ABC",414:"T",415:"C",416:"A",417:"C",418:"C",419:"D",420:"D",
+            421:"A",422:"B",423:"B",424:"C",425:"B",426:"C",427:"A",428:"C",429:"A",430:"B",
+            431:"C",432:"C",433:"C",434:"C",435:"D",436:"C",437:"A",438:"B",439:"D",440:"CD",
+            441:"ABCD",442:"D",443:"B",444:"D",445:"T",446:"B",447:"C",448:"B",449:"A",450:"T",
+            451:"C",452:"AB",453:"B",454:"ABC",455:"D",456:"C",457:"C",458:"D",459:"D",460:"AB",
+            461:"D",462:"B",463:"C",464:"ABC",465:"D",466:"F",467:"T",468:"D",469:"C",470:"BCD",
+            471:"B",472:"ABCD",473:"C",474:"B",475:"A",476:"A",477:"C",478:"C",479:"B",480:"C",
+            481:"B",482:"A",483:"B",484:"A",485:"T",486:"BC",487:"A",488:"D",489:"A",490:"C",
+            491:"T",492:"T",493:"C",494:"B",495:"A",496:"D",497:"B",498:"D",499:"BD",500:"A",
+            501:"A",502:"B",503:"D",504:"C",505:"B",506:"T",507:"F",508:"ABCD",509:"ABC",510:"A",
+            511:"F",512:"T",513:"A",514:"CD",515:"ABC",516:"C",517:"AB",518:"AB",519:"B",520:"C",
+            521:"F",522:"C",523:"B",524:"B",525:"D",526:"C",527:"A",528:"C",529:"D",530:"D",
+            531:"C",532:"C",533:"D",534:"D",535:"A",536:"B",537:"B",538:"A",539:"B",540:"D",
+            541:"AB",542:"C",543:"ABCD",544:"F",545:"T",546:"ABC",547:"BCD",548:"ABCD",549:"T",550:"B",
+            551:"F",552:"A",553:"A",554:"C",555:"C",556:"B",557:"A",558:"B",559:"B",560:"C",
+            561:"C",562:"B",563:"A",564:"C",565:"C",566:"B",567:"B",568:"C",569:"C",570:"A",
+            571:"D",572:"D",573:"C",574:"D",575:"B",576:"A",577:"B",578:"D",579:"A",580:"A",
+            581:"T",582:"A",583:"C",584:"T",585:"C",586:"F",587:"C",588:"T",589:"A",590:"C",
+            591:"B",592:"T",593:"T",594:"T",595:"F",596:"D",597:"C",598:"A",599:"D",600:"F"
+        }
+    };
+
+    // ----------------------
+    // 2. 逻辑处理
+    // ----------------------
+    
+    // 数据解压与标准化
+    const fullData = {};
+    
+    // 1-222 单选
+    const sArr = DB.range1.replace(/\s/g, '').split('');
+    sArr.forEach((ans, i) => {
+        fullData[i+1] = { type: 'single', ans: ans };
+    });
+
+    // 223-271 多选
+    for(let k in DB.multi) {
+        fullData[k] = { type: 'multi', ans: DB.multi[k] };
+    }
+
+    // 272-319 判断 (转为 T/F)
+    const jArr = DB.judge.replace(/\s/g, '').split('');
+    jArr.forEach((val, i) => {
+        let idx = 272 + i;
+        let ans = val === '1' ? 'T' : 'F';
+        fullData[idx] = { type: 'judge', ans: ans };
+    });
+
+    // 320-600 混合
+    for(let k in DB.mixed) {
+        let rawAns = DB.mixed[k];
+        let type = 'single';
+        if(rawAns === 'T' || rawAns === 'F') type = 'judge';
+        else if(rawAns.length > 1) type = 'multi';
+        
+        fullData[k] = { type: type, ans: rawAns };
+    }
+
+    // 渲染页面
+    const sheet = document.getElementById('sheet');
+    let html = '';
+
+    for(let i=1; i<=600; i++) {
+        if(!fullData[i]) continue;
+        const q = fullData[i];
+        const typeLabel = q.type === 'single' ? '单选' : (q.type === 'multi' ? '多选' : '判断');
+        
+        let optionsHtml = '';
+        if(q.type === 'judge') {
+            optionsHtml = `
+                <div class="opt-btn judge-true" onclick="selectOpt(${i}, 'T', this)"></div>
+                <div class="opt-btn judge-false" onclick="selectOpt(${i}, 'F', this)"></div>
+            `;
+        } else {
+            ['A','B','C','D'].forEach(opt => {
+                optionsHtml += `<div class="opt-btn" onclick="selectOpt(${i}, '${opt}', this)">${opt}</div>`;
+            });
+        }
+
+        // 将正确答案标记在属性中
+        html += `
+        <div class="q-card" id="q-${i}" data-type="${q.type}" data-answer="${q.ans}">
+            <div class="q-header">
+                <span>#${i}</span>
+                <span class="q-type-badge">${typeLabel}</span>
+            </div>
+            <div class="options">
+                ${optionsHtml}
+            </div>
+        </div>`;
+    }
+    sheet.innerHTML = html;
+
+    // 初始化：高亮所有正确答案（阅览模式默认）
+    highlightAnswers();
+
+    // ----------------------
+    // 3. 交互功能
+    // ----------------------
+
+    function switchMode(mode) {
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+        
+        const body = document.body;
+        const submitBtn = document.getElementById('submitBtn');
+        const scoreDiv = document.getElementById('scoreDisplay');
+
+        if (mode === 'view') {
+            body.classList.add('view-mode');
+            submitBtn.style.display = 'none';
+            scoreDiv.style.display = 'none';
+            highlightAnswers();
+            // 清除用户选择的样式干扰
+            document.querySelectorAll('.q-card').forEach(card => {
+                card.classList.remove('correct', 'wrong', 'checked');
+            });
+            // 清除选中状态，避免视觉混乱
+            document.querySelectorAll('.opt-btn.selected').forEach(btn => btn.classList.remove('selected'));
+        } else {
+            body.classList.remove('view-mode');
+            submitBtn.style.display = 'inline-block';
+            // 移除答案高亮
+            document.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('is-answer'));
+            // 恢复用户之前的选择（如果有）
+            loadData();
+        }
+    }
+
+    function highlightAnswers() {
+        for(let i=1; i<=600; i++) {
+            const card = document.getElementById(`q-${i}`);
+            if(!card) continue;
+            const ans = card.dataset.answer;
+            const opts = card.querySelectorAll('.opt-btn');
+            
+            opts.forEach(btn => {
+                const val = btn.innerText || (btn.classList.contains('judge-true') ? 'T' : 'F');
+                if(ans.includes(val)) {
+                    btn.classList.add('is-answer');
+                } else {
+                    btn.classList.remove('is-answer');
+                }
+            });
+        }
+    }
+
+    function selectOpt(id, val, btn) {
+        if(document.body.classList.contains('view-mode')) return; // 阅览模式不可点
+
+        const card = document.getElementById(`q-${id}`);
+        
+        // 核心逻辑：如果已经交过卷，再次点击选项时，移除评分样式，允许修改
+        if(card.classList.contains('checked')) {
+            card.classList.remove('checked', 'correct', 'wrong');
+            // 移除答案提示，变回普通选择模式
+            card.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('is-answer'));
+        }
+
+        const type = card.dataset.type;
+
+        if(type === 'single' || type === 'judge') {
+            // 单选互斥
+            card.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+        } else {
+            // 多选开关
+            btn.classList.toggle('selected');
+        }
+    }
+
+    function saveData() {
+        const data = {};
+        document.querySelectorAll('.q-card').forEach(card => {
+            const selected = Array.from(card.querySelectorAll('.opt-btn.selected')).map(b => {
+                return b.innerText || (b.classList.contains('judge-true') ? 'T' : 'F');
+            });
+            if(selected.length > 0) {
+                data[card.id] = selected.sort().join('');
+            }
+        });
+        localStorage.setItem('sz_2025_answers', JSON.stringify(data));
+        alert('进度已保存！');
+    }
+
+    function loadData() {
+        const data = JSON.parse(localStorage.getItem('sz_2025_answers') || '{}');
+        for(let id in data) {
+            const userAns = data[id]; // string "AB" or "T"
+            const card = document.getElementById(id);
+            if(card) {
+                const opts = card.querySelectorAll('.opt-btn');
+                opts.forEach(btn => {
+                    const val = btn.innerText || (btn.classList.contains('judge-true') ? 'T' : 'F');
+                    if(userAns.includes(val)) btn.classList.add('selected');
+                });
+            }
+        }
+    }
+
+    function clearAll() {
+        if(confirm('确定清空所有进度吗？')) {
+            localStorage.removeItem('sz_2025_answers');
+            document.querySelectorAll('.selected').forEach(b => b.classList.remove('selected'));
+            document.querySelectorAll('.q-card').forEach(c => {
+                c.classList.remove('correct', 'wrong', 'checked');
+                c.querySelectorAll('.is-answer').forEach(b => b.classList.remove('is-answer'));
+            });
+            document.getElementById('scoreDisplay').style.display = 'none';
+        }
+    }
+
+    function checkAnswers() {
+        let correctCount = 0;
+        let answeredCount = 0;
+        const total = 600;
+
+        document.querySelectorAll('.q-card').forEach(card => {
+            const trueAns = card.dataset.answer;
+            const userSelected = Array.from(card.querySelectorAll('.opt-btn.selected'))
+                .map(b => b.innerText || (b.classList.contains('judge-true') ? 'T' : 'F'))
+                .sort().join('');
+            
+            // 标记为已检查
+            card.classList.add('checked'); 
+            card.classList.remove('correct', 'wrong');
+
+            // 标记正确答案（用于错题查看）
+            const opts = card.querySelectorAll('.opt-btn');
+            opts.forEach(btn => {
+                const val = btn.innerText || (btn.classList.contains('judge-true') ? 'T' : 'F');
+                if(trueAns.includes(val)) btn.classList.add('is-answer');
+            });
+
+            if(userSelected) {
+                answeredCount++;
+                if(userSelected === trueAns) {
+                    card.classList.add('correct');
+                    correctCount++;
+                } else {
+                    card.classList.add('wrong');
+                }
+            }
+        });
+
+        const scoreDiv = document.getElementById('scoreDisplay');
+        scoreDiv.style.display = 'block';
+        scoreDiv.innerHTML = `📊 练习报告：已答 ${answeredCount} 题，正确 ${correctCount} 题，正确率 ${answeredCount ? Math.round(correctCount/answeredCount*100) : 0}%`;
+        window.scrollTo(0, 0);
+    }
+</script>
+
+</body>
+</html>
