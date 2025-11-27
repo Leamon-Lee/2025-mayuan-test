@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全题库智能答题卡 (1-600题)</title>
+    <title>全题库智能答题卡 (1-600题) - 可修改版</title>
     <style>
         :root {
             --primary: #1890ff;
@@ -101,6 +101,7 @@
             display: flex;
             flex-direction: column;
             border-left: 4px solid transparent;
+            transition: all 0.3s;
         }
 
         /* 题目类型标记 */
@@ -209,7 +210,7 @@
 <body class="view-mode"> <div class="container">
     <div class="header-bar">
         <div>
-            <h1>思政课题库 (1-600)</h1>
+            <h1>📚 思政课题库 (1-600)</h1>
             <small style="color:#888">单选/多选/判断自动识别</small>
         </div>
         
@@ -236,11 +237,10 @@
 
 <script>
     // ----------------------
-    // 1. 核心数据 (压缩存储)
+    // 1. 核心数据 (保留原样)
     // ----------------------
     const DB = {
         // 单选 1-222
-        //       0           1           2           3           4           5           6           7           8           9           10          11           12          13          14          15          16          17          18          19          20          21          22
         range1: "ADBAA BADAB CDDAA DCBCA DBDBA DDBBC BCCAA ABCBC CBBBC BDDBD BCCAB ADBDA CDCAC AAABC BBBCC DAAAC CCDBA BBDAB ABCBB AAABC BDAAB BBBCB ABABA ACBDC  DCBCA BBDCA AAACD CAABD CCCBA DCBDA BDACC ADCBA CADDA CABAA ACCBB BCBCC CCBAC ADCDB DBACD ACABC BADBA CBCBD DBAAC ADABC DA",
         
         // 多选 223-271 (特殊处理)
@@ -255,7 +255,7 @@
         },
 
         // 判断 272-319 (1=对, 0=错)
-        judge: "11110 01100 00001 11011 00111 10110 00101 11111 11111 1", // 需转换
+        judge: "11100 01100 00000 11111 10010 11111 10000 11011 00001 1", // 需转换
 
         // 混合题型 320-600 (根据解析提取)
         mixed: {
@@ -383,8 +383,10 @@
             highlightAnswers();
             // 清除用户选择的样式干扰
             document.querySelectorAll('.q-card').forEach(card => {
-                card.classList.remove('correct', 'wrong');
+                card.classList.remove('correct', 'wrong', 'checked');
             });
+            // 清除选中状态，避免视觉混乱
+            document.querySelectorAll('.opt-btn.selected').forEach(btn => btn.classList.remove('selected'));
         } else {
             body.classList.remove('view-mode');
             submitBtn.style.display = 'inline-block';
@@ -415,9 +417,16 @@
 
     function selectOpt(id, val, btn) {
         if(document.body.classList.contains('view-mode')) return; // 阅览模式不可点
-        if(document.getElementById(`q-${id}`).classList.contains('checked')) return; // 已交卷不可改
 
         const card = document.getElementById(`q-${id}`);
+        
+        // 核心逻辑：如果已经交过卷，再次点击选项时，移除评分样式，允许修改
+        if(card.classList.contains('checked')) {
+            card.classList.remove('checked', 'correct', 'wrong');
+            // 移除答案提示，变回普通选择模式
+            card.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('is-answer'));
+        }
+
         const type = card.dataset.type;
 
         if(type === 'single' || type === 'judge') {
@@ -465,6 +474,7 @@
             document.querySelectorAll('.selected').forEach(b => b.classList.remove('selected'));
             document.querySelectorAll('.q-card').forEach(c => {
                 c.classList.remove('correct', 'wrong', 'checked');
+                c.querySelectorAll('.is-answer').forEach(b => b.classList.remove('is-answer'));
             });
             document.getElementById('scoreDisplay').style.display = 'none';
         }
@@ -505,12 +515,9 @@
 
         const scoreDiv = document.getElementById('scoreDisplay');
         scoreDiv.style.display = 'block';
-        scoreDiv.innerHTML = `练习报告：已答 ${answeredCount} 题，正确 ${correctCount} 题，正确率 ${answeredCount ? Math.round(correctCount/answeredCount*100) : 0}%`;
+        scoreDiv.innerHTML = `📊 练习报告：已答 ${answeredCount} 题，正确 ${correctCount} 题，正确率 ${answeredCount ? Math.round(correctCount/answeredCount*100) : 0}%`;
         window.scrollTo(0, 0);
     }
-    
-    // 初始尝试加载数据（如果在刷题模式下）
-    // 默认view模式不需要加载用户数据
 </script>
 
 </body>
