@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全题库智能答题卡 (1-600题) - 可修改版</title>
+    <meta name="description" content="2025 秋季思政课学生自测题库答题卡，支持背题、刷题、保存进度和交卷评分。">
+    <meta name="theme-color" content="#1890ff">
+    <title>2025 思政课题库答题卡 (1-600)</title>
     <style>
         :root {
             --primary: #1890ff;
@@ -84,7 +86,7 @@
         .btn-save { background: #faad14; color: white; }
         .btn-clear { background: #ff4d4f; color: white; }
         .btn-check { background: var(--primary); color: white; }
-        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .action-btns button:hover { opacity: 0.9; transform: translateY(-1px); }
 
         /* 题目网格 */
         .grid-container {
@@ -102,6 +104,7 @@
             flex-direction: column;
             border-left: 4px solid transparent;
             transition: all 0.3s;
+            position: relative;
         }
 
         /* 题目类型标记 */
@@ -194,6 +197,23 @@
             padding: 20px;
         }
 
+        .resource-links {
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .resource-links a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .resource-links a:hover {
+            text-decoration: underline;
+        }
+
         #scoreDisplay {
             font-size: 1.2em;
             font-weight: bold;
@@ -210,13 +230,13 @@
 <body class="view-mode"> <div class="container">
     <div class="header-bar">
         <div>
-            <h1>📚 思政课题库 (1-600)</h1>
-            <small style="color:#888">单选/多选/判断自动识别</small>
+            <h1>思政课题库 (1-600)</h1>
+            <small style="color:#888">单选、多选、判断自动识别</small>
         </div>
         
         <div class="mode-switch">
-            <button class="mode-btn active" onclick="switchMode('view')">背题模式</button>
-            <button class="mode-btn" onclick="switchMode('practice')">刷题模式</button>
+            <button class="mode-btn active" onclick="switchMode('view', this)">背题模式</button>
+            <button class="mode-btn" onclick="switchMode('practice', this)">刷题模式</button>
         </div>
 
         <div class="action-btns">
@@ -231,7 +251,12 @@
         </div>
     
     <div class="status-bar">
-        <p>数据来源：用户上传题库解析 | 此页面为纯本地运行，不消耗流量</p>
+        <p>数据来源：题库答案整理。此页面为纯本地运行，进度仅保存在当前浏览器。</p>
+        <div class="resource-links">
+            <a href="docs/question-bank.pdf">题库 PDF</a>
+            <a href="docs/answers.md">答案解析</a>
+            <a href="README.md">项目说明</a>
+        </div>
     </div>
 </div>
 
@@ -255,7 +280,7 @@
         },
 
         // 判断 272-319 (1=对, 0=错)
-        judge: "11100 01100 00000 11111 10010 11111 10000 11011 00001 1", // 需转换
+        judge: "11100 01100 00000 11111 10010 11111 10000 11011 00001 111", // 需转换
 
         // 混合题型 320-600 (根据解析提取)
         mixed: {
@@ -368,9 +393,9 @@
     // 3. 交互功能
     // ----------------------
 
-    function switchMode(mode) {
+    function switchMode(mode, trigger) {
         document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-        event.target.classList.add('active');
+        trigger.classList.add('active');
         
         const body = document.body;
         const submitBtn = document.getElementById('submitBtn');
@@ -483,8 +508,6 @@
     function checkAnswers() {
         let correctCount = 0;
         let answeredCount = 0;
-        const total = 600;
-
         document.querySelectorAll('.q-card').forEach(card => {
             const trueAns = card.dataset.answer;
             const userSelected = Array.from(card.querySelectorAll('.opt-btn.selected'))

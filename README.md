@@ -18,6 +18,13 @@ index.html
 
 页面数据保存在浏览器 `localStorage` 中，只在本机生效，不会上传到服务器。
 
+## 维护说明
+
+- 页面入口固定为 `index.html`，用于 GitHub Pages 根目录托管。
+- 题库参考资料统一放在 `docs/`。
+- 历史备份统一放在 `archive/`。
+- 修改题库答案时，优先同步更新页面中的 `DB` 数据和 `docs/answers.md`。
+
 ## 目录结构
 
 ```text
